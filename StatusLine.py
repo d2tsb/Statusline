@@ -1,7 +1,6 @@
 """
 The MIT License (MIT)
-
-Copyright (c) 2024 Tilman Bertram
+Copyright (c) 2024* Tilman Bertram
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,9 +31,10 @@ import threading
 from enum import Enum
 
 class Efficiency(Enum):
-    EFFICIENT = 'eff'
-    MEDIUM = 'eff'
-    PRECISE = 'eff'
+    #prints every <value> seconds
+    EFFICIENT = 0.006
+    MEDIUM = 0.00001
+    PRECISE = 0.0000006
 
 
 class StatusLine:
@@ -62,15 +62,14 @@ class StatusLine:
         self.killed = False;
         self.printPercentage = printPercentage;
         self.eff = eff
-
+        self.mutex = threading.Lock()
 
     def throwLoop(self):
-        mutex = threading.Lock()
         while True:
             #if self.count >= self.end:
             if self.killed:
                 break;
-            with mutex:
+            with self.mutex:
                 self.printCurrentState();
             match self.eff:
                 case Efficiency.EFFICIENT:
@@ -172,8 +171,7 @@ class StatusLine:
 
 
     def incrementCount(self):
-        mutex = threading.Lock()
-        with mutex:
+        with self.mutex:
             if (self.count == self.end):
                 self.killed = True
 
@@ -182,12 +180,7 @@ class StatusLine:
     def reset(self):
         self.count = 0
         self.killed = False
-    def incrementCountAsync (self):
-        thr = threading.Thread(target=
-            self.incrementCount, ) 
-        thr.start() 
-        time.sleep(0.5) 
-          
+        
         
 
     def incrementCountSync(self):
