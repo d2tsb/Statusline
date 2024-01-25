@@ -46,6 +46,7 @@ class StatusLine:
                  printEndMessage=True,
                  printPercentage=True,
                  spinWheel=True,
+                 hideCursor=True,
                  eff: Efficiency = Efficiency.EFFICIENT
                  ):
 
@@ -59,11 +60,13 @@ class StatusLine:
         self.end_char = end_char
         self.spinWheel = spinWheel
         self.killed = False
+        self.hideCursor = hideCursor
         self.printPercentage = printPercentage
         self.eff = eff
         self.mutex = threading.Lock()
         self.run_event = threading.Event()
         self.run_event.clear()
+        self.interrupt_val = 0.01
 
     def throwLoop(self, ):
         while self.run_event.is_set():
@@ -77,7 +80,13 @@ class StatusLine:
             self.printCurrentState()
         print("") #new line
 
-
+    def interrupter(self): 
+        try: 
+            while self.run_event.is_set(): 
+                time.sleep(self.interrupt_val)
+        except KeyboardInterrupt:
+            self.run_event.clear(); 
+            return; 
     def test(self):
         tLoop = threading.Thread(target=self.throwLoop,)
         self.run_event.set()
@@ -93,7 +102,9 @@ class StatusLine:
     def run(self):
         self.run_event.set()
         tLoop = threading.Thread(target=self.throwLoop,)
+        thr2 = threading.Thread(target=self.interrupter,)
         tLoop.start()
+        thr2.start()
     def kill(self):
         self.run_event.clear()
         time.sleep(0.1 + Efficiency.EFFICIENT.value)
@@ -124,6 +135,9 @@ class StatusLine:
 
     def printCurrentState(self, ):
         wing = str('\33[2K\r')
+        if self.hideCursor:
+            hideCursor = str('\33[?25l' )
+            wing += hideCursor
         wing += self.beg_charBracket
         percentage = self.count/self.end  # value  [0;1]
         bla = round(percentage * (self.x_width - 2))  # max x_width - 2
@@ -146,6 +160,8 @@ class StatusLine:
         # wing += ' ' + str(percentage * 100) + '% ' + 20*' '
 
         if self.count == self.end:
+            showCursor = '\33[?25h'
+            wing += showCursor
             wing += '\n'
             self.killed = True
         else:
