@@ -24,14 +24,13 @@ SOFTWARE.
 
 import sys
 import time
-#import asyncio
-#import random
 import threading
 
 from enum import Enum
 
+
 class Efficiency(Enum):
-    #prints every <value> seconds
+    # prints every <value> seconds
     EFFICIENT = 0.006
     MEDIUM = 0.00001
     PRECISE = 0.0000006
@@ -39,68 +38,73 @@ class Efficiency(Enum):
 
 class StatusLine:
 
-    def __init__ (self,
-                  rangeEnd = 100,
-                  x_width = 12,
-                  end_char = '>',
-                  status_char = '=',
-                  printEndMessage = True,
-                  printPercentage = True,
-                  spinWheel = True,
-                  eff : Efficiency = Efficiency.EFFICIENT
-                  ):
+    def __init__(self,
+                 rangeEnd=100,
+                 x_width=12,
+                 end_char='>',
+                 status_char='=',
+                 printEndMessage=True,
+                 printPercentage=True,
+                 spinWheel=True,
+                 eff: Efficiency = Efficiency.EFFICIENT
+                 ):
 
         self.count = 0
-        self.end = rangeEnd;
+        self.end = rangeEnd
         self.x_width = x_width
         self.beg_charBracket = '['
         self.end_charBracket = ']'
-        self.printEndMessage = printEndMessage;
-        self.status_char = status_char;
-        self.end_char = end_char;
-        self.spinWheel = spinWheel;
-        self.killed = False;
-        self.printPercentage = printPercentage;
+        self.printEndMessage = printEndMessage
+        self.status_char = status_char
+        self.end_char = end_char
+        self.spinWheel = spinWheel
+        self.killed = False
+        self.printPercentage = printPercentage
         self.eff = eff
         self.mutex = threading.Lock()
+        self.run_event = threading.Event()
+        self.run_event.clear()
 
-    def throwLoop(self):
-        while True:
-            #if self.count >= self.end:
-            if self.killed:
-                break;
+    def throwLoop(self, ):
+        while self.run_event.is_set():
+            # if self.count >= self.end:
+            # print (self.run_event.is_set())
             with self.mutex:
-                self.printCurrentState();
-            match self.eff:
-                case Efficiency.EFFICIENT:
-                    time.sleep(0.006)#update time
-                case Efficiency.MEDIUM:
-                    time.sleep(0.00001)#update time
-                case Efficiency.PRECISE:
-                    time.sleep(0.0000006)#update time
+                self.printCurrentState()
+                # sys.stdout.write("%d" % self.count);
+            time.sleep(self.eff.value)
+        with self.mutex:
+            self.printCurrentState()
+        print("") #new line
 
-    def test (self):
-        tLoop = threading.Thread(target=self.throwLoop)
-        tLoop.start();
+
+    def test(self):
+        tLoop = threading.Thread(target=self.throwLoop,)
+        self.run_event.set()
+        tLoop.start()
         for _ in range(0,
                        self.end):
             time.sleep(0.01)
-            #time.sleep(0.2)
-            #self.incrementCount();
-            self.incrementCount();
-        tLoop.join();
+            # time.sleep(0.2)
+            # self.incrementCount();
+            self.incrementCount()
+        tLoop.join()
 
-    def run (self):
-        tLoop = threading.Thread(target=self.throwLoop)
-        tLoop.start();
-
-
+    def run(self):
+        self.run_event.set()
+        tLoop = threading.Thread(target=self.throwLoop,)
+        tLoop.start()
+    def kill(self):
+        self.run_event.clear()
+        time.sleep(0.1 + Efficiency.EFFICIENT.value)
+        # naive way to terminate the thread. sigkill or something else
+        # would be a more proper solution.
 
     def clearLine(self):
-        #nice and simple solution
-        i = '';
+        # nice and simple solution
+        i = ''
         backspace = chr(8)
-        for _ in range(0,self.x_width):
+        for _ in range(0, self.x_width):
             i += backspace
         print(i, end='')
 
@@ -113,47 +117,48 @@ class StatusLine:
         print(i, end='')
         """
 
-    def print (self, value):
-        #sys.stdout.write(value + '\n');
-        sys.stdout.write(value );
-        #print(value, end='');
+    def print(self, value):
+        # sys.stdout.write(value + '\n');
+        sys.stdout.write(value)
+        # print(value, end='');
+
     def printCurrentState(self, ):
-        wing = str('\33[2K\r');
-        wing += self.beg_charBracket;
-        percentage = self.count/self.end; #value  [0;1]
-        bla = round(percentage * (self.x_width - 2)) # max x_width - 2
-        #fill content
-        for i in range(0, bla):
+        wing = str('\33[2K\r')
+        wing += self.beg_charBracket
+        percentage = self.count/self.end  # value  [0;1]
+        bla = round(percentage * (self.x_width - 2))  # max x_width - 2
+        # fill content
+        for _ in range(0, bla):
             wing += self.status_char
         if bla > 0 and self.count < self.end:
-            wing = list(wing);
-            wing[-1] = self.end_char;
-            wing = "".join(wing);
-        #fill content
+            wing = list(wing)
+            wing[-1] = self.end_char
+            wing = "".join(wing)
+        # fill content
         fill_char = ' '
         for _ in range(0, (self.x_width - 2) - bla):
             wing += fill_char
-        wing += self.end_charBracket;
-        wing += ' ' + ('%03.1f ' % (percentage * 100)) + '% ' + 2*' '
-        wing += ' ' 
+        wing += self.end_charBracket
+        if self.printPercentage:
+            wing += ' ' + ('%03.1f ' % (percentage * 100)) + '% ' + 2*' '
+        wing += ' '
 
- 
-        #wing += ' ' + str(percentage * 100) + '% ' + 20*' '
+        # wing += ' ' + str(percentage * 100) + '% ' + 20*' '
 
         if self.count == self.end:
             wing += '\n'
             self.killed = True
-        else: 
+        else:
             if self.spinWheel:
-                match self.count % 4: 
-                    case 0: 
-                        wing += '|' 
-                    case 1: 
-                        wing += '/' 
-                    case 2: 
-                        wing += '-' 
-                    case 3: 
-                        wing += '\\' 
+                match self.count % 4:
+                    case 0:
+                        wing += '|'
+                    case 1:
+                        wing += '/'
+                    case 2:
+                        wing += '-'
+                    case 3:
+                        wing += '\\'
                         """
                     case 4: 
                         wing += '-' 
@@ -164,47 +169,38 @@ class StatusLine:
 
         self.print(wing)
 
-        #print(wing, end='')
-        #print(wing, end='')
-        #self.clearLine()
-        #self.print('\x1b[2K\r')
-
+        # print(wing, end='')
+        # print(wing, end='')
+        # self.clearLine()
+        # self.print('\x1b[2K\r')
 
     def incrementCount(self):
         with self.mutex:
-            if (self.count == self.end):
-                self.killed = True
+            self.count += 1
+        if (self.count == self.end):
+            self.kill()
 
-            if (self.killed == False):
-                self.count += 1
     def reset(self):
         self.count = 0
         self.killed = False
-        
-        
 
     def incrementCountSync(self):
-        #easiest update solution
+        # easiest update solution
         if (self.count == self.end):
             self.killed = True
 
         if (self.killed == False):
             self.count += 1
-        self.printCurrentState();
-
+        self.printCurrentState()
 
     def testRun(self):
-        #Primitive
-        self.reset();
+        # Primitive
+        self.reset()
         for _ in range(0,
                        self.end):
-            self.incrementCount();
-            self.printCurrentState();
+            self.incrementCount()
+            self.printCurrentState()
             time.sleep(0.01)
 
 
-
-
 # loading. loading.. loading...
-
-

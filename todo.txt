@@ -1,0 +1,8 @@
+
+
+- implement gradients and colors
+- make other attributes atomic - for the sake of threadsafety
+- implement correct abort method
+- add terminal scaling at runtime without any issues for the animation
+- apply statusline to terminal barriers
+
